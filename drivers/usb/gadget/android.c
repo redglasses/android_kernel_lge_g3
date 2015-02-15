@@ -222,7 +222,9 @@ struct android_dev {
 #if defined CONFIG_USB_G_LGE_ANDROID && defined CONFIG_LGE_PM
 	bool check_pif;
 #endif
-
+#ifdef CONFIG_MACH_MSM8974_G3_KDDI
+	struct delayed_work factory_work;
+#endif
 	/* A list of struct android_configuration */
 	struct list_head configs;
 	int configs_num;
@@ -466,6 +468,16 @@ static void android_work(struct work_struct *data)
 	}
 #endif
 }
+
+#ifdef CONFIG_MACH_MSM8974_G3_KDDI
+static void gadget_enable_work(struct work_struct *data)
+{
+	struct android_dev *dev = container_of(data, struct android_dev, factory_work.work);
+	struct usb_composite_dev *cdev = dev->cdev;
+	printk("%s is called\n", __func__);
+	usb_gadget_connect(cdev->gadget);
+}
+#endif
 
 static int android_enable(struct android_dev *dev)
 {
@@ -3088,7 +3100,7 @@ static struct device_attribute *android_usb_attributes[] = {
 /* Composite driver */
 
 #if defined CONFIG_USB_G_LGE_ANDROID && defined CONFIG_LGE_PM
-
+#define USB_PULLUP_DELAY	3000 // unit : msec
 static void android_lge_factory_bind(struct usb_composite_dev *cdev)
 {
 	struct android_dev *dev = cdev_to_android_dev(cdev);
@@ -3180,7 +3192,12 @@ static void android_lge_factory_bind(struct usb_composite_dev *cdev)
 	if (usb_add_config(cdev, &conf->usb_config, android_bind_config))
 		return;
 
+#ifdef CONFIG_MACH_MSM8974_G3_KDDI
+	schedule_delayed_work(&dev->factory_work,
+						  msecs_to_jiffies(USB_PULLUP_DELAY));
+#else
 	usb_gadget_connect(cdev->gadget);
+#endif
 	dev->disable_depth--;
 	dev->enabled = true;
 }
@@ -3650,7 +3667,9 @@ static int __devinit android_probe(struct platform_device *pdev)
 	INIT_LIST_HEAD(&android_dev->configs);
 	INIT_WORK(&android_dev->work, android_work);
 	mutex_init(&android_dev->mutex);
-
+#ifdef CONFIG_MACH_MSM8974_G3_KDDI
+	INIT_DELAYED_WORK(&android_dev->factory_work, gadget_enable_work);
+#endif
 #if defined CONFIG_USB_G_LGE_ANDROID && defined CONFIG_LGE_PM
 	if (lgeusb_get_factory_cable() && !lge_get_laf_mode())
 		android_dev->check_pif = true;

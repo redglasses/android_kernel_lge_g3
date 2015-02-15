@@ -43,6 +43,9 @@
 #include "diag_debugfs.h"
 #include "diag_masks.h"
 #include "diagfwd_bridge.h"
+#ifdef CONFIG_LGE_DIAG_USB_ACCESS_LOCK
+#include <mach/board_lge.h>
+#endif
 
 #include <linux/coresight-stm.h>
 #include <linux/kernel.h>
@@ -2090,6 +2093,10 @@ inline void diagfwd_bridge_fn(int type) { }
 int user_diag_enable;
 #ifdef CONFIG_LGE_DIAG_ENABLE_SYSFS
 
+#if defined(CONFIG_LGE_DIAG_USB_ACCESS_LOCK) && defined(CONFIG_MACH_MSM8974_G3_KDDI)
+#define DIAG_ENABLE	1
+#define DIAG_DISABLE	0
+#endif /* CONFIG_MACH_MSM8974_G3_KDDI */
 static ssize_t read_diag_enable(struct device *dev, struct device_attribute *attr,
 				   char *buf)
 {
@@ -2115,6 +2122,12 @@ static ssize_t write_diag_enable(struct device *dev,
 	{
 		user_diag_enable = 1;
 	}
+#if defined(CONFIG_LGE_DIAG_USB_ACCESS_LOCK) && defined(CONFIG_MACH_MSM8974_G3_KDDI)
+	if(lge_get_factory_boot()) {
+		printk("[FACTORY] force to diag enable, factory mode\n");
+		user_diag_enable = DIAG_ENABLE;
+	}
+#endif /* CONFIG_MACH_MSM8974_G3_KDDI */
 
 	printk("[%s] diag_enable: %d\n",__func__, user_diag_enable);
 
@@ -2133,6 +2146,13 @@ int lg_diag_create_file(struct platform_device *pdev)
     return ret;
 }
 
+#if defined(CONFIG_LGE_DIAG_USB_ACCESS_LOCK) && defined(CONFIG_MACH_MSM8974_G3_KDDI)
+int get_diag_enable(void)
+{
+	return user_diag_enable;
+}
+EXPORT_SYMBOL(get_diag_enable);
+#endif /* CONFIG_MACH_MSM8974_G3_KDDI */
 
 int lg_diag_remove_file(struct platform_device *pdev)
 {

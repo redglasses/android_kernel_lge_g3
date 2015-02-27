@@ -905,7 +905,7 @@ static int16_t msm_actuator_StablePosition_pos_calc(int16_t cur_pos)
     }
     return StablePosition_Pos_calc_value;
 #endif
-			+/*                                                                                   */
+/*                                                                                   */
 #endif
 }
 

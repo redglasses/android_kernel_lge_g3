@@ -13,7 +13,6 @@
 
 
 /* Debug message feature */
-/* #define FELICA_DEBUG_MSG */
 
 /*
 * Description :
@@ -31,9 +30,8 @@ int felica_gpio_open(int gpionum, int direction, int value)
 
   if(rc)
   {
-    #ifdef FEATURE_DEBUG_HIGH
-    FELICA_DEBUG_MSG("[FELICA_GPIO] ERROR - gpio_tlmm_config \n");
-	#endif
+    FELICA_DEBUG_MSG_HIGH("[FELICA_GPIO] ERROR - gpio_tlmm_config \n");
+
     return rc;
   }
 
@@ -54,9 +52,8 @@ int felica_gpio_open(int gpionum, int direction, int value)
 
     if(rc)
     {
-      #ifdef FEATURE_DEBUG_HIGH
-      FELICA_DEBUG_MSG("[FELICA_GPIO] ERROR -  gpio_direction_input \n");
-	  #endif
+      FELICA_DEBUG_MSG_HIGH("[FELICA_GPIO] ERROR -  gpio_direction_input \n");
+
       return rc;
     }
   }
@@ -66,9 +63,8 @@ int felica_gpio_open(int gpionum, int direction, int value)
 
     if(rc)
     {
-      #ifdef FEATURE_DEBUG_HIGH
-      FELICA_DEBUG_MSG("[FELICA_GPIO] ERROR - gpio_tlmm_config \n");
-	  #endif
+      FELICA_DEBUG_MSG_HIGH("[FELICA_GPIO] ERROR - gpio_tlmm_config \n");
+
       return rc;
     }
 	if(GPIO_FELICA_PON == gpionum)
@@ -81,9 +77,8 @@ int felica_gpio_open(int gpionum, int direction, int value)
 
     if(rc)
     {
-      #ifdef FEATURE_DEBUG_HIGH
-      FELICA_DEBUG_MSG("[FELICA_GPIO] ERROR -  gpio_direction_output \n");
-	  #endif
+      FELICA_DEBUG_MSG_HIGH("[FELICA_GPIO] ERROR -  gpio_direction_output \n");
+
       return rc;
     }
   }
@@ -137,9 +132,8 @@ int felica_get_rfs_gpio_num(void)
     gpionum = GPIO_FELICA_RFS;
   }
 
-	#ifdef FEATURE_DEBUG_LOW
-	FELICA_DEBUG_MSG("[FELICA_GPIO] felica_get_rfs_gpio_num(%d) \n",gpionum);
-	#endif
+	FELICA_DEBUG_MSG_LOW("[FELICA_GPIO] felica_get_rfs_gpio_num(%d) \n",gpionum);
+
 	return gpionum;	
 
 	return GPIO_FELICA_RFS;
@@ -165,9 +159,8 @@ int felica_get_int_gpio_num(void)
   {
     gpionum = GPIO_FELICA_INT_REV_D;  
   }
-	#ifdef FEATURE_DEBUG_LOW
-	FELICA_DEBUG_MSG("[FELICA_GPIO] felica_get_rws_gpio_num(%d) \n",gpionum);
-	#endif
+	FELICA_DEBUG_MSG_LOW("[FELICA_GPIO] felica_get_rws_gpio_num(%d) \n",gpionum);
+
 	return gpionum;
 #else	
 	return GPIO_FELICA_INT;

@@ -20,8 +20,8 @@
             synaptics_s3528@20 {
                 status = "ok";
                 revision = "rev_a";
-                fw_image_s3528_a0 = "synaptics/g3_kddi_jp/PLG352-V1.06-PR1657698-DS5.5.1.0-30055186.img";
-                fw_image_s3528_a1 = "synaptics/g3_kddi_jp/PLG352-V1.06-PR1657698-DS5.5.1.0-30055186.img";
+                fw_image_s3528_a0 = "synaptics/g3_kddi_jp/PLG352-V1.08-PR1670515-DS5.5.1.0-30055188.img";
+                fw_image_s3528_a1 = "synaptics/g3_kddi_jp/PLG352-V1.08-PR1670515-DS5.5.1.0-30055188.img";
                 fw_image_s3528_a1_suntel = "synaptics/g3_kddi_jp/PLG391-V1.05-PR1653201-DS5.5.1.0.1066_10055185_S3528A1.img";
 				fw_image_s3528_a1_factory = "synaptics/g3_kddi_jp/PLG352-V1.05-PR1648545-DS5.5.1.0-30055185.img";
                 fw_image_s3621 = "synaptics/g3_kddi_jp/PLG298-F004.img";
@@ -31,8 +31,8 @@
 			synaptics_s3528_rev_a@20 {
 				status = "ok";
 				revision = "rev_a1...";
-                fw_image_s3528_a0 = "synaptics/g3_kddi_jp/PLG352-V1.06-PR1657698-DS5.5.1.0-30055186.img";
-                fw_image_s3528_a1 = "synaptics/g3_kddi_jp/PLG352-V1.06-PR1657698-DS5.5.1.0-30055186.img";
+                fw_image_s3528_a0 = "synaptics/g3_kddi_jp/PLG352-V1.08-PR1670515-DS5.5.1.0-30055188.img";
+                fw_image_s3528_a1 = "synaptics/g3_kddi_jp/PLG352-V1.08-PR1670515-DS5.5.1.0-30055188.img";
                 fw_image_s3528_a1_suntel = "synaptics/g3_kddi_jp/PLG391-V1.05-PR1653201-DS5.5.1.0.1066_10055185_S3528A1.img";
 				fw_image_s3528_a1_factory = "synaptics/g3_kddi_jp/PLG352-V1.05-PR1648545-DS5.5.1.0-30055185.img";
                 fw_image_s3621 = "synaptics/g3_kddi_jp/PLG298-F004.img";

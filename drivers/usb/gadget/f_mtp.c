@@ -106,6 +106,7 @@ struct mtp_dev {
 	struct usb_ep *ep_intr;
 
 #ifdef CONFIG_USB_G_LGE_MULTIPLE_CONFIGURATION
+	bool first_mtp_binded;
 	int allocated_func;
 	/*ep for swap*/
 	struct usb_ep *ep_in1;
@@ -1811,6 +1812,8 @@ static int multi_mtp_bind(struct mtp_dev	*dev, struct usb_function *f, struct us
 #ifdef CONFIG_USB_G_LGE_ANDROID
 	/* for ptp & MS desc */
 	ptp_interface_desc2.bInterfaceNumber = id;
+	if (dev->first_mtp_binded == false)
+		mtp_ext_config_desc.function.bFirstInterfaceNumber = id;
 #endif
 	/* allocate endpoints */
 	ret = mtp_create_endpoints_only(dev, &mtp_fullspeed_in_desc2,
@@ -1818,7 +1821,11 @@ static int multi_mtp_bind(struct mtp_dev	*dev, struct usb_function *f, struct us
 	if (ret)
 		return ret;
 	mtp_ep_backup(dev, f->name);
-
+	if (dev->first_mtp_binded == false) {
+		ret = mtp_req_alloc(dev);
+		if (ret)
+			return ret;
+	}
 	/* support high speed hardware */
 	if (gadget_is_dualspeed(c->cdev->gadget)) {
 		mtp_highspeed_in_desc2.bEndpointAddress =
@@ -1886,6 +1893,7 @@ mtp_function_bind(struct usb_configuration *c, struct usb_function *f)
 	ret = mtp_req_alloc(dev);
 	if (ret)
 		return ret;
+	dev->first_mtp_binded = true;
 #else
 	ret = mtp_create_bulk_endpoints(dev, &mtp_fullspeed_in_desc,
 			&mtp_fullspeed_out_desc, &mtp_intr_desc);
@@ -1943,6 +1951,7 @@ mtp_function_unbind(struct usb_configuration *c, struct usb_function *f)
 	dev->state = STATE_OFFLINE;
 #ifdef CONFIG_USB_G_LGE_MULTIPLE_CONFIGURATION
 	dev->allocated_func = 0;
+	dev->first_mtp_binded = false;
 #endif
 }
 
@@ -1956,9 +1965,8 @@ static int mtp_function_set_alt(struct usb_function *f,
 	DBG(cdev, "mtp_function_set_alt intf: %d alt: %d\n", intf, alt);
 #ifdef CONFIG_USB_G_LGE_MULTIPLE_CONFIGURATION
 	mtp_ep_swap(dev, f->config->bConfigurationValue);
-	if (f->config->bConfigurationValue == 2)
+	if ((dev->first_mtp_binded == true) && f->config->bConfigurationValue == 2)
 		mtp_ep_yield_req(dev);
-	dev->allocated_func = f->config->bConfigurationValue;
 #endif
 
 	ret = config_ep_by_speed(cdev->gadget, f, dev->ep_in);
@@ -2267,7 +2275,7 @@ static void mtp_debugfs_init(struct mtp_dev *dev)
 
 	debugfs_create_file("profile", 0444, dent, dev, &debug_profile_ops);
 }
-#endif /* CONFIG_USB_G_LGE_MTP_PROFILING && CONFIG_DEBUG_FS */
+#endif /*                                                   */
 
 static int mtp_setup(void)
 {

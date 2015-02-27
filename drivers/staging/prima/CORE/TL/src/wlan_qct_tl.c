@@ -7679,8 +7679,8 @@ WLANTL_STARxConn
                       ucMPDUHLen, pTLCb, ucSTAId, bForwardIAPPwithLLC);
 
         if ( VOS_STATUS_SUCCESS != vosStatus ) 
-        {
-          TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+        { //case 01531930 Lower the loglevel of specific log messages.
+          TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_WARN,
             "WLAN TL:Failed to translate from 802.11 to 802.3 - dropping"));
           /* Drop packet */
           vos_pkt_return_packet(vosDataBuff);
@@ -8140,8 +8140,8 @@ WLANTL_STARxAuth
                         ucMPDUHLen, pTLCb, ucSTAId, bForwardIAPPwithLLC);
 
       if ( VOS_STATUS_SUCCESS != vosStatus )
-      {
-        TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+      {//case 01531930 Lower the loglevel of specific log messages.
+        TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_WARN,
                "WLAN TL:Failed to translate from 802.11 to 802.3 - dropping"));
         /* Drop packet */
         vos_pkt_return_packet(vosDataBuff);

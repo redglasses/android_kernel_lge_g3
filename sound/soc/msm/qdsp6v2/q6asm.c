@@ -4780,6 +4780,7 @@ int q6asm_set_lgesoundmabl_allparam(struct audio_client *ac, struct lgesoundmabl
 	lgesoundmabl_allparam_str.data.param_size = lgesoundmabl_allparam_str.param.data_payload_size - sizeof(lgesoundmabl_allparam_str.data);
 	lgesoundmabl_allparam_str.data.reserved = 0;
 	lgesoundmabl_allparam_str.DeviceSpeaker = param->DeviceSpeaker;
+	lgesoundmabl_allparam_str.MonoEnable = param->MonoEnable;
     lgesoundmabl_allparam_str.LrBalanceControl = param->LrBalanceControl;
 
 	rc = apr_send_pkt(ac->apr, (uint32_t *) &lgesoundmabl_allparam_str);

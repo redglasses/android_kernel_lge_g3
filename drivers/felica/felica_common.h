@@ -62,11 +62,17 @@ typedef enum _e_snfc_i2c_status {
 //#define FELICA_NFC_INTERFACE
 
 /* debug message */
-#define FEATURE_DEBUG_HIGH
-#define FEATURE_DEBUG_MED
-#define FEATURE_DEBUG_LOW
+//#define FEATURE_DEBUG_HIGH
+//#define FEATURE_DEBUG_MED
+//#define FEATURE_DEBUG_LOW
+
 #define RXTX_LOG_ENABLE
-#define FELICA_DEBUG_MSG pr_debug
+
+#define FELICA_DEBUG_MSG_HIGH pr_info
+#define FELICA_DEBUG_MSG_MED pr_info
+#define FELICA_DEBUG_MSG_LOW pr_debug
+
+//#define FELICA_DEBUG_MSG pr_info
 
 /* felica */
 #define FELICA_NAME    "felica"
@@ -105,7 +111,7 @@ typedef enum _e_snfc_i2c_status {
 
 #define FELICA_PATH "PATH=/sbin:/vendor/bin:/system/sbin:/system/bin:/system/xbin"
 
-#define FELICA_BOOTCLASSPATH "BOOTCLASSPATH=/system/framework/core.jar:/system/framework/conscrypt.jar:/system/framework/okhttp.jar:/system/framework/core-junit.jar:/system/framework/bouncycastle.jar:/system/framework/ext.jar:/system/framework/framework.jar:/system/framework/framework2.jar:/system/framework/telephony-common.jar:/system/framework/voip-common.jar:/system/framework/mms-common.jar:/system/framework/android.policy.jar:/system/framework/services.jar:/system/framework/apache-xml.jar:/system/framework/webviewchromium.jar:/system/framework/com.lge.frameworks.jar:/system/framework/WfdCommon.jar:/system/framework/org.codeaurora.Performance.jar"
+#define FELICA_BOOTCLASSPATH "BOOTCLASSPATH=/system/framework/core.jar:/system/framework/conscrypt.jar:/system/framework/okhttp.jar:/system/framework/core-junit.jar:/system/framework/bouncycastle.jar:/system/framework/ext.jar:/system/framework/framework.jar:/system/framework/framework2.jar:/system/framework/telephony-common.jar:/system/framework/voip-common.jar:/system/framework/mms-common.jar:/system/framework/android.policy.jar:/system/framework/services.jar:/system/framework/apache-xml.jar:/system/framework/webviewchromium.jar:/system/framework/com.lge.frameworks.jar:/system/framework/WfdCommon.jar:/system/framework/org.codeaurora.Performance.jar:/system/framework/aspectjrt.jar"
 
 /* Must check each model's VALUE from UART developer */
 #define FELICA_IC2_NAME "/dev/i2c-0"  // dev/i2c-84

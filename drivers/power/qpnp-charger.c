@@ -1466,7 +1466,7 @@ qpnp_chg_usb_chg_gone_irq_handler(int irq, void *_chip)
 		pr_err("failed to read usb_chgpth_sts rc=%d\n", rc);
 
 #ifdef CONFIG_LGE_PM
-	pr_info("chg_gone triggered\n");
+ 	pr_info("chg_gone triggered usb_sts :0x%x \n", usb_sts);
 #else
 	pr_debug("chg_gone triggered\n");
 #endif

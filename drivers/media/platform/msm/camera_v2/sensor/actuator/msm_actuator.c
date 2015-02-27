@@ -817,12 +817,15 @@ static int32_t msm_actuator_check_move_done(struct msm_actuator_ctrl_t * a_ctrl)
 	}
 	return -1;
 }
-/* LGE_CHAGNE_E, check VCM movement done, 2013-06-28, hyungmoo.huh@lge.com */
+/*                                                                         */
 
 static int msm_actuator_StablePosition_move(struct msm_actuator_ctrl_t * a_ctrl,
 	int16_t next_dac, int16_t damping_parm, unsigned int delay)
 {
 	int rc = 0;
+    /*                                                                                   */
+    struct msm_camera_i2c_reg_setting reg_setting;
+    /*                                                                                   */
 
 	if(next_dac >= 0) {
 		CDBG("%s: [next_dac = %d] [delay = %d]", __func__, next_dac, delay);
@@ -833,14 +836,21 @@ static int msm_actuator_StablePosition_move(struct msm_actuator_ctrl_t * a_ctrl,
 //			&a_ctrl->i2c_client,
 //			a_ctrl->i2c_reg_tbl, a_ctrl->i2c_tbl_index,
 //			a_ctrl->i2c_data_type);
+        /*                                                                                   */
+        reg_setting.reg_setting = a_ctrl->i2c_reg_tbl;
+        reg_setting.data_type = a_ctrl->i2c_data_type;
+        reg_setting.size = a_ctrl->i2c_tbl_index;
+        rc = a_ctrl->i2c_client.i2c_func_tbl->i2c_write_table_w_microdelay(
+            &a_ctrl->i2c_client, &reg_setting);
+        /*                                                                                   */
 
 			if (rc < 0) {
 				pr_err("%s: i2c write error:[1]%d\n",
 					__func__, rc);
 				return rc;
 			}
-			//msleep(delay); /* LGE_CHANGE, do need delay because of checking VCM movement , 2013-06-28, hyungmoo.huh@lge.com */
-			msm_actuator_check_move_done(a_ctrl); /* LGE_CHANGE, check VCM movement , 2013-06-28, hyungmoo.huh@lge.com */
+			//                                                                                                                  
+			msm_actuator_check_move_done(a_ctrl); /*                                                                   */
 		}
 		else{
 			pr_err("%s: a_ctrl->i2c_reg_tbl == NULL\n",
@@ -877,6 +887,26 @@ static int16_t msm_actuator_StablePosition_pos_calc(int16_t cur_pos)
 	return 0;
 #else
 	return cur_pos * 1 /2; /* LGE_CHANGE, Fix tick noise about AF module, 2013-08-13, kyungjin.min@lge.com */
+/*                                                                                   */
+#if 0
+	return cur_pos * 1 /2; /*                                                                              */
+#else
+    int StablePosition_Pos_calc_value = 0;
+    if (cur_pos > 220)
+    {
+        StablePosition_Pos_calc_value = 220;
+    }
+    else if (cur_pos > 70 && cur_pos <= 220)
+    {
+        StablePosition_Pos_calc_value = cur_pos - 15;
+    }
+    else
+    {
+        StablePosition_Pos_calc_value = 0;
+    }
+    return StablePosition_Pos_calc_value;
+#endif
+			+/*                                                                                   */
 #endif
 }
 
@@ -895,7 +925,7 @@ static int32_t msm_actuator_StablePosition(struct msm_actuator_ctrl_t *a_ctrl)
       if (a_ctrl->step_position_table == NULL)
          return -ENOMEM;
 
-		for(i = 0; i < 10; i++) {
+		for(i = 0; i < 12; i++) { /*                                                                                 */
 			cur_dac = msm_actuator_StablePosition_dac_calc(a_ctrl, cur_pos);
 			next_pos = msm_actuator_StablePosition_pos_calc(cur_pos);
 			a_ctrl->i2c_tbl_index = 0;

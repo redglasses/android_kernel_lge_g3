@@ -371,10 +371,7 @@ struct bq24296_chip {
 	bool	wlc_otg;
 	otg_fake_status wlc_otg_status;
 #endif
-#if defined(CONFIG_MACH_MSM8974_G3_ATT) || defined(CONFIG_MACH_MSM8974_G3_CA)
-	struct delayed_work pma_workaround_work;
-	struct wake_lock pma_workaround_wake_lock;
-#endif
+
 };
 
 #ifdef CONFIG_SENSORS_QPNP_ADC_VOLTAGE
@@ -635,7 +632,7 @@ static int bq24296_set_input_i_limit(struct bq24296_chip *chip, int ma)
 	}
 #if defined(CONFIG_VZW_POWER_REQ)
 	bq24296_set_en_hiz(chip, (chip->usb_psy->is_floated_charger &&
-		(ma <= 0) && chip->usb_present) ? true : false);
+				chip->usb_present) ? true : false);
 #endif
 #ifdef CONFIG_LGE_THERMALE_CHG_CONTROL
 	if (ma > iusb_control && iusb_control >= INPUT_CURRENT_LIMIT_USB30 &&
@@ -700,7 +697,7 @@ static int bq24296_get_input_i_limit(struct bq24296_chip *chip, int *ma)
 		defined(CONFIG_MACH_MSM8974_G3_TMO_US)
 #define IBAT_WLC_ADJUST		768		/* IDT IDT9025A(WPC) 768mA */
 #elif	defined(CONFIG_MACH_MSM8974_G3_VZW) || defined(CONFIG_MACH_MSM8974_G3_LRA)
-#define IBAT_WLC_ADJUST		512		/* TI BQ51020(WPC) 512mA */
+#define IBAT_WLC_ADJUST		704		/* TI BQ51020(WPC) 704mA */
 #elif	defined(CONFIG_MACH_MSM8974_G3_ATT) || defined(CONFIG_MACH_MSM8974_G3_CA)
 #define IBAT_WLC_ADJUST		768		/* TI BQ51221(PMA) 768mA */
 #else
@@ -2228,6 +2225,7 @@ static void bq24296_decide_otg_mode(struct bq24296_chip *chip)
 
 #define	ADC_TO_IINMAX(x) (((int)(x)*198)/100)
 #define VZW_UNDER_CURRENT_CHARGING_MA	400000
+#define VZW_UNDER_CURRENT_CHARGING_A	(VZW_UNDER_CURRENT_CHARGING_MA/1000)
 #define VZW_UNDER_CURRENT_CHARGING_DETECT_MV	4200000
 static void VZW_CHG_director(struct bq24296_chip *chip)
 {
@@ -2239,11 +2237,16 @@ static void VZW_CHG_director(struct bq24296_chip *chip)
 	if (!val.intval)
 		goto normal_charger;
 
+	if (chip->usb_psy->is_usb_driver_uninstall) {
+		chip->vzw_chg_mode = VZW_USB_DRIVER_UNINSTALLED;
+		pr_info("VZW usb driver uninstall detected!!\n");
+		goto exit;
+	}
+
 	/* Invalid charger detect */
 	if (lge_get_board_revno() < HW_REV_1_0)
 		goto normal_charger;
-	bq24296_charger_psy_getprop(chip, usb_psy, ONLINE, &val);
-	if (chip->usb_psy->is_floated_charger && !val.intval) {
+	if (chip->usb_psy->is_floated_charger) {
 		chip->vzw_chg_mode = VZW_NOT_CHARGING;
 		pr_info("VZW invalid charging detected!!\n");
 		goto exit;
@@ -2257,13 +2260,15 @@ static void VZW_CHG_director(struct bq24296_chip *chip)
 	else
 		goto normal_charger;
 	if (val.intval > VZW_UNDER_CURRENT_CHARGING_DETECT_MV)
-		//goto normal_charger;
-		goto exit;
-	qpnp_vadc_read(chip->vadc_dev, LR_MUX4_AMUX_THM1, &result);
+		goto normal_charger;
+	bq24296_charger_psy_getprop(chip, psy_this, CURRENT_MAX, &val);
+	if (val.intval < VZW_UNDER_CURRENT_CHARGING_A)
+		goto normal_charger;
 	bq24296_charger_psy_getprop(chip, usb_psy, TYPE, &val);
-	if ((val.intval == POWER_SUPPLY_TYPE_USB_DCP) &&
-			(ADC_TO_IINMAX(result.physical) <
-				VZW_UNDER_CURRENT_CHARGING_MA)) {
+	if (val.intval != POWER_SUPPLY_TYPE_USB_DCP)
+		goto normal_charger;
+	qpnp_vadc_read(chip->vadc_dev, LR_MUX4_AMUX_THM1, &result);
+	if (ADC_TO_IINMAX(result.physical) < VZW_UNDER_CURRENT_CHARGING_MA) {
 		chip->vzw_chg_mode = VZW_UNDER_CURRENT_CHARGING;
 		pr_info("VZW slow charging detected!!\n");
 		goto exit;
@@ -2545,7 +2550,9 @@ static int bq24296_power_get_event_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_FLOATED_CHARGER:
 		val->intval = psy->is_floated_charger;
 		break;
-
+	case POWER_SUPPLY_PROP_DRIVER_UNINSTALL:
+		val->intval = psy->is_usb_driver_uninstall;
+		break;
 	default:
 		break;
 	}
@@ -2928,42 +2935,6 @@ bq24296_set_thermal_chg_current_set(const char *val, struct kernel_param *kp)
 module_param_call(bq24296_thermal_mitigation, bq24296_set_thermal_chg_current_set,
 	param_get_uint, &bq24296_thermal_mitigation, 0644);
 
-#if defined(CONFIG_MACH_MSM8974_G3_ATT) || defined(CONFIG_MACH_MSM8974_G3_CA)
-static void pma_workaround_worker(struct work_struct *work)
-{
-	struct bq24296_chip *chip =
-		container_of(work, struct bq24296_chip, pma_workaround_work.work);
-	union power_supply_propval val = {0, };
-
-	bq24296_charger_psy_getprop(chip, usb_psy, SCOPE, &val);
-	pr_err("[WLC] otg state = %d\n", val.intval);
-	if (val.intval != POWER_SUPPLY_SCOPE_SYSTEM) {
-		gpio_set_value(chip->otg_en, 0);
-		bq24296_enable_otg(chip, false);
-		pr_err("[WLC] unset pma workaround\n");
-	}
-
-	if (wake_lock_active(&chip->pma_workaround_wake_lock)) {;
-		wake_unlock(&chip->pma_workaround_wake_lock);
-		pr_err("[WLC] unset pma wake lock\n");
-	}
-}
-
-static void pma_workaround(struct bq24296_chip *chip, int temp)
-{
-	if (temp >= 55) {
-		gpio_set_value(chip->otg_en, 1);
-		bq24296_enable_otg(chip, true);
-		pr_err("[WLC] set pma workaround\n");
-
-		schedule_delayed_work(&chip->pma_workaround_work, 15 * HZ);
-		wake_lock(&chip->pma_workaround_wake_lock);
-		pr_err("[WLC] set pma wake lock\n");
-		pr_err("[WLC] after 15sec, unset pma workaround\n");
-	}
-}
-#endif
-
 static int temp_before;
 static void bq24296_monitor_batt_temp(struct work_struct *work)
 {
@@ -3018,9 +2989,6 @@ static void bq24296_monitor_batt_temp(struct work_struct *work)
 
 	if(wlc_online) {
 #ifdef CONFIG_LGE_THERMALE_CHG_CONTROL_FOR_WLC
-#if defined(CONFIG_MACH_MSM8974_G3_ATT) || defined(CONFIG_MACH_MSM8974_G3_CA)
-		pma_workaround(chip, req.batt_temp);
-#endif
 		bq24296_charger_psy_getprop_event(chip, wlc_psy,
 			WIRELESS_THERMAL_MITIGATION, &wlc_ret, _WIRELESS_);
 		wlc_thermal_mitigation = wlc_ret.intval;
@@ -3590,11 +3558,6 @@ static int bq24296_probe(struct i2c_client *client,
 			       WAKE_LOCK_SUSPEND, "chg timeout");
 	wake_lock_init(&chip->icl_wake_lock,
 			       WAKE_LOCK_SUSPEND, "icl_wake_lock");
-#if defined(CONFIG_MACH_MSM8974_G3_ATT) || defined(CONFIG_MACH_MSM8974_G3_CA)
-	wake_lock_init(&chip->pma_workaround_wake_lock,
-		       WAKE_LOCK_SUSPEND, "pma_wake_lock");
-#endif
-
 	chip->batt_removed.name = "battery_removed";
 	chip->batt_removed.state = 0; /*if batt is removed, state will be set to 1 */
 	chip->batt_removed.print_name = batt_removed_print_name;
@@ -3609,10 +3572,6 @@ static int bq24296_probe(struct i2c_client *client,
 	INIT_DELAYED_WORK(&chip->check_suspended_work,
 			bq24296_check_suspended_worker);
 #endif
-#if defined(CONFIG_MACH_MSM8974_G3_ATT) || defined(CONFIG_MACH_MSM8974_G3_CA)
-	INIT_DELAYED_WORK(&chip->pma_workaround_work, pma_workaround_worker);
-#endif
-
 	mutex_init(&chip->usbin_lock);
 	chip->usbin_ref_count = 0;
 	chip->last_usbin_mv = ROUND_mA(chip->icl_vbus_mv);
@@ -3781,9 +3740,6 @@ err_debugfs:
 err_init_ac_psy:
 	power_supply_unregister(&chip->batt_psy);
 err_init_batt_psy:
-#if defined(CONFIG_MACH_MSM8974_G3_ATT) || defined(CONFIG_MACH_MSM8974_G3_CA)
-	wake_lock_destroy(&chip->pma_workaround_wake_lock);
-#endif
 	wake_lock_destroy(&chip->icl_wake_lock);
 	wake_lock_destroy(&chip->chg_wake_lock);
 	wake_lock_destroy(&chip->uevent_wake_lock);
@@ -3824,9 +3780,6 @@ static int bq24296_remove(struct i2c_client *client)
 #endif
 	wake_lock_destroy(&chip->battgone_wake_lock);
 	wake_lock_destroy(&chip->icl_wake_lock);
-#if defined(CONFIG_MACH_MSM8974_G3_ATT) || defined(CONFIG_MACH_MSM8974_G3_CA)
-	wake_lock_destroy(&chip->pma_workaround_wake_lock);
-#endif
 
 	power_supply_unregister(&chip->ac_psy);
 	power_supply_unregister(&chip->batt_psy);

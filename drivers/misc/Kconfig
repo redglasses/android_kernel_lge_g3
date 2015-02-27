@@ -606,6 +606,10 @@ config TSPDRV
     bool "tspdrv"
         default n
 
+config TSPDRV_PMIC_VIBRATOR
+    bool "pmic vibrator suppert"
+	    default n
+
 config LGE_SM100
     bool "lge sm100 vibrator support"
         depends on ANDROID_TIMED_OUTPUT

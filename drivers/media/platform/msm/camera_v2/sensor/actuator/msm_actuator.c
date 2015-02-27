@@ -886,7 +886,6 @@ static int16_t msm_actuator_StablePosition_pos_calc(int16_t cur_pos)
 #if defined(CONFIG_LG_OIS)
 	return 0;
 #else
-	return cur_pos * 1 /2; /* LGE_CHANGE, Fix tick noise about AF module, 2013-08-13, kyungjin.min@lge.com */
 /*                                                                                   */
 #if 0
 	return cur_pos * 1 /2; /*                                                                              */

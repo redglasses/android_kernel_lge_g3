@@ -2461,7 +2461,7 @@ static void dwc3_gadget_usb2_phy_suspend(struct dwc3 *dwc, int suspend)
 static void dwc3_gadget_reset_interrupt(struct dwc3 *dwc)
 {
 	u32			reg;
-#if defined(CONFIG_DWC3_MSM_BC_12_VZW_SUPPORT)
+#ifndef CONFIG_LGE_PM
 	struct dwc3_otg		*dotg = dwc->dotg;
 #endif
 
@@ -2509,14 +2509,7 @@ static void dwc3_gadget_reset_interrupt(struct dwc3 *dwc)
 		dwc3_gadget_usb3_phy_suspend(dwc, false);
 	}
 
-#if defined(CONFIG_LGE_PM) && defined(CONFIG_DWC3_MSM_BC_12_VZW_SUPPORT)
-	if ((dotg && dotg->otg.phy) && !lge_get_factory_cable()) {
-#if defined (CONFIG_SLIMPORT_ANX7816) || defined(CONFIG_SLIMPORT_ANX7808)
-	if (!slimport_is_connected())
-#endif
-	usb_phy_set_power(dotg->otg.phy, 0);
-	}
-#elif !defined(CONFIG_LGE_PM)
+#ifndef CONFIG_LGE_PM
 	usb_phy_set_power(dotg->otg.phy, 0);
 #endif
 
@@ -2763,7 +2756,7 @@ static void dwc3_gadget_linksts_change_interrupt(struct dwc3 *dwc,
 		}
 	} else if (next == DWC3_LINK_STATE_U3) {
 		dbg_event(0xFF, "SUSPEND", 0);
-#ifdef CONFIG_DWC3_MSM_BC_12_VZW_SUPPORT
+#if 0
 		if (dwc->dotg->charger->chg_type == DWC3_SDP_CHARGER) {
 			dwc->dotg->charger->vzw_usb_config_state = VZW_USB_STATE_UNDEFINED;
 			queue_delayed_work(system_nrt_wq, dwc->dotg->charger->drv_check_state_wq, 0);

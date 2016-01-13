@@ -17,7 +17,7 @@
 
 #include <linux/kernel.h>
 #include <linux/types.h>
-#include <linux/jiffies.h>
+#include <linux/hrtimer.h>
 #include <linux/delay.h>
 #include <asm-generic/errno.h>
 #include <asm/io.h>
@@ -36,13 +36,13 @@
  */
 #define readl_poll_timeout(addr, val, cond, sleep_us, timeout_us) \
 ({ \
-	unsigned long timeout = jiffies + usecs_to_jiffies(timeout_us); \
+	ktime_t timeout = ktime_add_us(ktime_get(), timeout_us); \
 	might_sleep_if(timeout_us); \
 	for (;;) { \
 		(val) = readl(addr); \
 		if (cond) \
 			break; \
-		if (timeout_us && time_after(jiffies, timeout)) { \
+		if (timeout_us && ktime_compare(ktime_get(), timeout) > 0) { \
 			(val) = readl(addr); \
 			break; \
 		} \

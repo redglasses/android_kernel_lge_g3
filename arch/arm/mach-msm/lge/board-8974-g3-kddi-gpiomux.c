@@ -1713,7 +1713,7 @@ static struct msm_gpiomux_config sensor_configs[] __initdata = {
 #endif
 #endif
 
-#if defined(CONFIG_LGE_SM100) || defined(CONFIG_TSPDRV)
+#if defined(CONFIG_LGE_SM100)
 static struct gpiomux_setting vibrator_suspend_cfg = {
        .func = GPIOMUX_FUNC_GPIO,
        .drv = GPIOMUX_DRV_2MA,
@@ -2166,14 +2166,14 @@ void __init msm_8974_init_gpiomux(void)
 #if 0 /* disable sensor GPIO setting (enable ADSP)*/
 	msm_gpiomux_install(sensor_configs, ARRAY_SIZE(sensor_configs));
 #endif
-#if defined(CONFIG_LGE_SM100) || defined(CONFIG_TSPDRV)
+#if defined(CONFIG_LGE_SM100)
        msm_gpiomux_install(vibrator_configs, ARRAY_SIZE(vibrator_configs));
 #endif
-/* LGE_CHANGE_S, [BT][younghyun.kwon@lge.com], 2013-01-29 */
+/*                                                        */
 #ifdef CONFIG_LGE_BLUETOOTH
     bluetooth_msm_gpiomux_install();
-#endif /* CONFIG_LGE_BLUETOOTH */
-/* LGE_CHANGE_E, [BT][younghyun.kwon@lge.com], 2013-01-29 */
+#endif /*                      */
+/*                                                        */
 
 	if (of_board_is_dragonboard() && machine_is_apq8074())
 		msm_gpiomux_install(apq8074_dragonboard_ts_config,

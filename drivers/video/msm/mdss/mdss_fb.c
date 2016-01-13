@@ -79,10 +79,10 @@ static u32 mdss_fb_pseudo_palette[16] = {
 	0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff
 };
 
-#if defined(CONFIG_LGE_BROADCAST_TDMB)
+#if defined(CONFIG_LGE_BROADCAST_TDMB) || defined(CONFIG_LGE_BROADCAST_JFULLSEG)
 extern struct mdp_csc_cfg dmb_csc_convert;
 extern int pp_set_dmb_status(int flag);
-#endif /* LGE_BROADCAST */
+#endif /*               */
 
 static struct msm_mdp_interface *mdp_instance;
 
@@ -2386,10 +2386,10 @@ static int mdss_fb_ioctl(struct fb_info *info, unsigned int cmd,
 	u32 dsi_panel_invert = 0;
 #endif
 
-#if defined(CONFIG_LGE_BROADCAST_TDMB)
+#if defined(CONFIG_LGE_BROADCAST_TDMB) || defined(CONFIG_LGE_BROADCAST_JFULLSEG)
 	int dmb_flag = 0;
 	struct mdp_csc_cfg dmb_csc_cfg;
-#endif /* LGE_BROADCAST */
+#endif /*               */
 
 	if (!info || !info->par)
 		return -EINVAL;
@@ -2463,7 +2463,7 @@ static int mdss_fb_ioctl(struct fb_info *info, unsigned int cmd,
 		ret = mdss_dsi_panel_invert(dsi_panel_invert);
 		break;
 #endif
-#if defined(CONFIG_LGE_BROADCAST_TDMB)
+#if defined(CONFIG_LGE_BROADCAST_TDMB) || defined(CONFIG_LGE_BROADCAST_JFULLSEG)
 	case MSMFB_DMB_SET_FLAG:
 		ret = copy_from_user(&dmb_flag, argp, sizeof(int));
 		if (ret)
@@ -2476,7 +2476,7 @@ static int mdss_fb_ioctl(struct fb_info *info, unsigned int cmd,
 			return ret;
 		memcpy(dmb_csc_convert.csc_mv, dmb_csc_cfg.csc_mv, sizeof(dmb_csc_cfg.csc_mv));
 		break;
-#endif /* LGE_BROADCAST */
+#endif /*               */
 
 	default:
 		if (mfd->mdp.ioctl_handler)

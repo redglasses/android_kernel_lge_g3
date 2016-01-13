@@ -85,13 +85,24 @@ struct mdp_csc_cfg mdp_csc_convert[MDSS_MDP_MAX_CSC] = {
 	},
 };
 
-#if defined(CONFIG_LGE_BROADCAST_TDMB)
+#if defined(CONFIG_LGE_BROADCAST_TDMB) || defined(CONFIG_LGE_BROADCAST_JFULLSEG)
 struct mdp_csc_cfg dmb_csc_convert = {
 #if defined(CONFIG_MACH_MSM8974_G3_KR)
 	0,
 	{
 		0x023e, 0x0000, 0x0331,  //287
 		0x0244, 0xff37, 0xfe60,  //290
+		0x026c, 0x0409, 0x0000,  //310
+	},
+	{ 0xfff0, 0xff80, 0xff80,},
+	{ 0x0, 0x0, 0x0,},
+	{ 0x0, 0xff, 0x0, 0xff, 0x0, 0xff,},
+	{ 0x0, 0xff, 0x0, 0xff, 0x0, 0xff,},
+#elif defined(CONFIG_MACH_MSM8974_G3_KDDI)
+	0,
+	{
+		0x023e, 0x0000, 0x0331,  //287
+		0x0244, 0xff38, 0xfe61,  //290
 		0x026c, 0x0409, 0x0000,  //310
 	},
 	{ 0xfff0, 0xff80, 0xff80,},
@@ -385,7 +396,7 @@ int igc_c2[256] = {0,};
 static DEFINE_MUTEX(mdss_pp_mutex);
 static struct mdss_pp_res_type *mdss_pp_res;
 
-#if defined(CONFIG_LGE_BROADCAST_TDMB)
+#if defined(CONFIG_LGE_BROADCAST_TDMB) || defined(CONFIG_LGE_BROADCAST_JFULLSEG)
 static int dmb_status = 0; /* on - 1, off - 0 */
 int pp_set_dmb_status(int flag)
 {
@@ -896,7 +907,7 @@ static int pp_vig_pipe_setup(struct mdss_mdp_pipe *pipe, u32 *op)
 		 * previously configured pipe need to re-configure CSC matrix
 		 */
 		if (pipe->play_cnt == 0) {
-#if !defined(CONFIG_LGE_BROADCAST_TDMB)
+#if !defined(CONFIG_LGE_BROADCAST_TDMB) && !defined(CONFIG_LGE_BROADCAST_JFULLSEG)
 			mdss_mdp_csc_setup(MDSS_MDP_BLOCK_SSPP, pipe->num, 1,
 					   MDSS_MDP_CSC_YUV2RGB);
 #else

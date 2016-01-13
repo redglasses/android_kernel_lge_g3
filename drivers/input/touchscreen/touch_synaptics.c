@@ -73,6 +73,7 @@ static int fw_upgrade_state = 0;
 //extern int touch_thermal_mode;
 u8 default_finger_amplitude[2] = {0};
 extern int touch_ta_status;
+extern int touch_hdmi_status;
 struct synaptics_ts_f12_info {
 	bool ctrl_reg_is_present[32];
 	bool data_reg_is_present[16];
@@ -2896,6 +2897,7 @@ static int synaptics_ts_noise_log(struct i2c_client *client, struct touch_data* 
 		|| (im_sum >= ULONG_MAX || cns_sum >= ULONG_MAX || cid_im_sum >= ULONG_MAX || freq_scan_im_sum >= ULONG_MAX || cnt >= UINT_MAX)) {
 		if((ts->ts_state_flag.ts_noise_log_flag == TS_NOISE_LOG_ENABLE)
 			|| touch_ta_status
+			|| touch_hdmi_status
 			|| (touch_debug_mask & DEBUG_NOISE))
 			TOUCH_INFO_MSG("Aver: CNS[%5lu]   IM[%5lu]   CID_IM[%5lu]   FREQ_SCAN_IM[%5lu] (cnt:%u)\n",
 				cns_sum/cnt, im_sum/cnt, cid_im_sum/cnt, freq_scan_im_sum/cnt, cnt);
@@ -3129,7 +3131,8 @@ enum error_type synaptics_ts_get_data(struct i2c_client *client, struct touch_da
 
 	if((ts->ts_state_flag.ts_noise_log_flag == TS_NOISE_LOG_ENABLE)
 		|| (ts->ts_state_flag.check_noise_menu == MENU_ENTER)
-		|| touch_ta_status)
+		|| touch_ta_status
+		|| touch_hdmi_status)
 		DO_SAFE(synaptics_ts_noise_log(client, curr_data, prev_data), error);
 
 	return NO_ERROR;

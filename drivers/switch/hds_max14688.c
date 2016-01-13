@@ -276,7 +276,6 @@ struct max14688 {
     struct delayed_work     det_work;
 #ifdef I2C_SUSPEND_WORKAROUND
     struct                  delayed_work check_suspended_work;
-    int                     suspended;
 #endif
     int                     matched_jack;   /* invalid if negative */
     int                     matched_button; /* invalid if negative */
@@ -1455,16 +1454,13 @@ static void max14688_check_suspended_worker(struct work_struct *work)
 {
     struct max14688 *me = container_of(work, struct max14688, check_suspended_work.work);
 
-    log_vdbg("%s : me->suspended - %d\n", __func__, me->suspended);
+    log_vdbg("%s\n", __func__);
 
-    if (me->suspended || i2c_suspended)
-    {
+    if (i2c_suspended) {
         log_vdbg("max14688 suspended. try i2c operation after 100ms.\n");
         schedule_delayed_work(&me->check_suspended_work, msecs_to_jiffies(100));
-    }
-    else
-    {
-        log_vdbg("max14688 resume. me->suspended:%d, i2c_suspended:%d\n", me->suspended, i2c_suspended);
+    } else {
+        log_vdbg("max14688 resume. i2c_suspended:%d\n",i2c_suspended);
         schedule_delayed_work(&me->irq_work, 0);
     }
 }
@@ -1746,53 +1742,9 @@ static __devexit int max14688_remove (struct i2c_client *client)
     return 0;
 }
 
-#ifdef CONFIG_PM_SLEEP
-static int max14688_suspend (struct device *dev)
-{
-    struct max14688 *me = dev_get_drvdata(dev);
-
-    log_vdbg("%s\n", __func__);
-    __lock(me);
-
-    if (likely(!device_may_wakeup(dev))) {
-	    cancel_delayed_work_sync(&me->irq_work);
-	    cancel_delayed_work_sync(&me->det_work);
-    }
-
-#ifdef I2C_SUSPEND_WORKAROUND
-    me->suspended = 1;
-#endif
-    __unlock(me);
-    return 0;
-}
-
-static int max14688_resume (struct device *dev)
-{
-	struct max14688 *me = dev_get_drvdata(dev);
-
-	log_vdbg("%s\n", __func__);
-	__lock(me);
-	schedule_delayed_work(&me->irq_work, MAX14688_WORK_DELAY);
-
-#ifdef I2C_SUSPEND_WORKAROUND
-    me->suspended = 0;
-#endif
-	__unlock(me);
-	return 0;
-}
-#endif /* CONFIG_PM_SLEEP */
-
-/*static SIMPLE_DEV_PM_OPS(max14688_pm, max14688_suspend, max14688_resume);*/
-
-const struct dev_pm_ops max14688_pm = {
-    .suspend               = max14688_suspend,
-    .resume                = max14688_resume,
-};
-
 static struct i2c_driver max14688_i2c_driver = {
     .driver.name           = DRIVER_NAME,
     .driver.owner          = THIS_MODULE,
-    .driver.pm             = &max14688_pm,
 #ifdef CONFIG_OF
     .driver.of_match_table = of_match_ptr(max14688_device_ids),
 #endif /* CONFIG_OF */

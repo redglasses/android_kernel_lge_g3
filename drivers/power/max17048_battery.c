@@ -1067,9 +1067,9 @@ static int max17048_parse_dt(struct device *dev,
 		mdata->temp_co_cold = 5050;
 		mdata->empty = 0;
 	} else if (cell_info == TCD_AAC) {
-		mdata->rcomp = 55;
-		mdata->temp_co_hot = 637;
-		mdata->temp_co_cold = 4525;
+		mdata->rcomp = 106;
+		mdata->temp_co_hot = 900;
+		mdata->temp_co_cold = 6325;
 		mdata->empty = 0;
 	}
 #else

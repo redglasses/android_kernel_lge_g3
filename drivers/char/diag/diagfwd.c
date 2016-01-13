@@ -62,6 +62,10 @@
 #include "lg_dm_tty.h"
 #endif
 
+#ifdef CONFIG_LGE_ACG_CARRIER_CODE
+#include "diag_acg.h"
+#endif
+
 int diag_debug_buf_idx;
 unsigned char diag_debug_buf[1024];
 /* Number of entries in table of buffers */
@@ -1238,6 +1242,51 @@ int diag_process_stm_cmd(unsigned char *buf)
 	return 0;
 }
 
+#if defined(CONFIG_LGE_DIAG_USB_ACCESS_LOCK) && defined(CONFIG_MACH_MSM8974_G3_KDDI)
+extern int get_diag_enable(void);
+#define DIAG_ENABLE	1
+#define DIAG_DISABLE	0
+#define COMMAND_PORT_LOCK	0xA1
+#define COMMAND_WEB_DOWNLOAD	0xEF
+#define COMMAND_ASYNC_HDLC_FLAG	0x7E
+#define COMMAND_DLOAD_RESET	0x3A
+#define COMMAND_TEST_MODE	0xFA
+#define COMMAND_TEST_MODE_RESET	0x29
+
+int is_filtering_command(char *buf)
+{
+	int ret=0;
+	if(buf == NULL)
+	return -EFAULT;
+	
+	switch(buf[0]) {
+	  case COMMAND_PORT_LOCK :
+		ret = 1;
+		break;
+	  case COMMAND_WEB_DOWNLOAD :
+		ret = 1;
+		break;
+	  case COMMAND_ASYNC_HDLC_FLAG :
+		ret = 1;
+		break;
+	  case COMMAND_DLOAD_RESET :
+		ret = 1;
+		break;
+	  case COMMAND_TEST_MODE :
+		ret = 1;
+		break;
+	  case COMMAND_TEST_MODE_RESET :
+		ret = 1;
+		break;
+	  default:
+		ret = 0;
+		break;
+	}
+	
+	return ret;
+}
+#endif
+
 int diag_apps_responds()
 {
 	if (chk_apps_only()) {
@@ -1261,6 +1310,16 @@ int diag_process_apps_pkt(unsigned char *buf, int len)
 	int status = 0;
 #if defined(CONFIG_DIAG_OVER_USB)
 	unsigned char *ptr;
+#endif
+#ifdef CONFIG_LGE_ACG_CARRIER_CODE
+	unsigned long int carrier_code = 0;
+	int result = 0;
+#endif
+	
+#if defined(CONFIG_LGE_DIAG_USB_ACCESS_LOCK) && defined(CONFIG_MACH_MSM8974_G3_KDDI)
+	/*	buf[0] : 0xA1(161) is a diag command for mdm port lock */
+	if( (is_filtering_command(buf) != 1)  && (get_diag_enable() == DIAG_DISABLE) )
+	return 0;
 #endif
 
 	/* Check if the command is a supported mask command */
@@ -1693,6 +1752,17 @@ int diag_process_apps_pkt(unsigned char *buf, int len)
 		encode_rsp_and_send(5);
 		return 0;
 	}
+#ifdef CONFIG_LGE_ACG_CARRIER_CODE
+	else if  ((*buf == 0x26) && (*(buf+1) == 0x6d) && (*(buf+2) == 0x84)) 
+	{
+		carrier_code = get_carrier_code();
+	}
+	else if  ((*buf == 0x27) && (*(buf+1) == 0x6d) && (*(buf+2) == 0x84)) 
+	{
+		carrier_code = 10*(*(buf+4))+(*(buf+3));
+		result = set_carrier_code(carrier_code);
+	}
+#endif	
 	 /* Check for ID for NO MODEM present */
 	else if (chk_polling_response()) {
 		/* respond to 0x0 command */

@@ -680,7 +680,11 @@ static int dwc3_otg_set_power(struct usb_phy *phy, unsigned mA)
 	power_supply_set_supply_type(dotg->psy, power_supply_type);
 #endif
 
+#if defined(CONFIG_DWC3_MSM_BC_12_VZW_SUPPORT) && defined(CONFIG_LGE_PM)
+	if (dotg->charger->max_power <= IUNIT && mA > 2) {
+#else
 	if (dotg->charger->max_power <= 2 && mA > 2) {
+#endif
 		/* Enable charging */
 		if (power_supply_set_online(dotg->psy, true))
 			goto psy_error;
@@ -963,9 +967,6 @@ static void dwc3_otg_sm_work(struct work_struct *w)
 					 */
 					if (dotg->charger_retry_count ==
 						max_chgr_retry_count) {
-#ifdef CONFIG_LGE_PM
-						power_supply_set_floated_charger(dotg->psy, 1);
-#endif
 #if defined (CONFIG_SLIMPORT_ANX7816) || defined(CONFIG_SLIMPORT_ANX7808)
 						if (slimport_is_connected()) {
 							dwc3_otg_set_power(phy, IDEV_CHG_MIN);
@@ -976,7 +977,7 @@ static void dwc3_otg_sm_work(struct work_struct *w)
 #ifdef CONFIG_LGE_PM
 #ifdef CONFIG_DWC3_MSM_BC_12_VZW_SUPPORT
 						queue_delayed_work(system_nrt_wq, dotg->charger->drv_check_state_wq, 0);
-						dwc3_otg_set_power(phy, 0);
+						dwc3_otg_set_power(phy, IUNIT);
 						dwc3_otg_start_peripheral(&dotg->otg, 1);
 						phy->state = OTG_STATE_B_PERIPHERAL;
 						work = 1;
@@ -1018,12 +1019,7 @@ static void dwc3_otg_sm_work(struct work_struct *w)
 		} else {
 			if (charger)
 				charger->start_detection(dotg->charger, false);
-#ifdef CONFIG_LGE_PM
-			if (!dotg->psy)
-				dotg->psy = power_supply_get_by_name("usb");
-			if (dotg->psy)
-				power_supply_set_floated_charger(dotg->psy, 0);
-#endif
+
 			dotg->charger_retry_count = 0;
 			dwc3_otg_set_power(phy, 0);
 			dev_dbg(phy->dev, "No device, trying to suspend\n");

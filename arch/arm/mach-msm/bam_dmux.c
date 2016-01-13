@@ -441,6 +441,7 @@ static void __queue_rx(gfp_t alloc_flags)
 			mutex_unlock(&bam_rx_pool_mutexlock);
 			DMUX_LOG_KERR("%s: sps_transfer_one failed %d\n",
 				__func__, ret);
+			if (bam_connection_is_active)
 			panic("forced crash\n");
 
 			dma_unmap_single(NULL, info->dma_address, BUFFER_SIZE,

@@ -1805,14 +1805,7 @@ composite_suspend(struct usb_gadget *gadget)
 
 	cdev->suspended = 1;
 
-#if defined(CONFIG_LGE_PM) && defined(CONFIG_DWC3_MSM_BC_12_VZW_SUPPORT)
-	if (!lge_get_factory_cable()) {
-#if defined (CONFIG_SLIMPORT_ANX7816) || defined(CONFIG_SLIMPORT_ANX7808)
-	if (!slimport_is_connected())
-#endif
-	usb_gadget_vbus_draw(gadget, 2);
-	}
-#elif !defined(CONFIG_LGE_PM)
+#ifndef CONFIG_LGE_PM
 	usb_gadget_vbus_draw(gadget, 2);
 #endif
 }

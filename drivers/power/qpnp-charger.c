@@ -410,6 +410,8 @@ struct qpnp_chg_chip {
 	unsigned int 			current_max;
 	struct wake_lock	uevent_wake_lock;
 	struct delayed_work		usb_valid_work;
+	struct delayed_work		boost_disable_work;
+	bool			boost_disable;
 	u8 				last_chgr_sts;
 	int 			vbatdet_lo_cnt;
 	bool			Is_first_chg_en;
@@ -1428,6 +1430,13 @@ qpnp_chg_vbatdet_lo_irq_handler(int irq, void *_chip)
 			msecs_to_jiffies(EOC_CHECK_PERIOD_MS));
 		pm_stay_awake(chip->dev);
 	}
+#ifdef CONFIG_LGE_PM
+	else if (chip->vbatdet_lo_cnt < 50) {
+		chip->vbatdet_lo_cnt++;
+		return IRQ_HANDLED;
+	}
+	chip->vbatdet_lo_cnt = 0;
+#endif
 	qpnp_chg_disable_irq(&chip->chg_vbatdet_lo);
 
 	pr_debug("psy changed usb_psy\n");
@@ -1457,7 +1466,7 @@ qpnp_chg_usb_chg_gone_irq_handler(int irq, void *_chip)
 		pr_err("failed to read usb_chgpth_sts rc=%d\n", rc);
 
 #ifdef CONFIG_LGE_PM
-	pr_info("chg_gone triggered\n");
+ 	pr_info("chg_gone triggered usb_sts :0x%x \n", usb_sts);
 #else
 	pr_debug("chg_gone triggered\n");
 #endif
@@ -1823,6 +1832,12 @@ qpnp_chg_usb_usbin_valid_irq_handler(int irq, void *_chip)
 					power_supply_changed(chip->usb_psy);
 				}
 			}
+#ifdef CONFIG_LGE_PM
+				if (chip->chg_done) {
+					schedule_delayed_work(&chip->eoc_work,
+										  msecs_to_jiffies(EOC_CHECK_PERIOD_MS));
+				}
+#endif
 			if (!qpnp_chg_is_dc_chg_plugged_in(chip)) {
 				chip->delta_vddmax_mv = 0;
 				qpnp_chg_set_appropriate_vddmax(chip);
@@ -3494,6 +3509,10 @@ qpnp_chg_regulator_boost_enable(struct regulator_dev *rdev)
 	struct qpnp_chg_chip *chip = rdev_get_drvdata(rdev);
 	int rc;
 
+#ifdef CONFIG_LGE_PM
+		cancel_delayed_work_sync(&chip->boost_disable_work);
+#endif
+		
 	if (qpnp_chg_is_usb_chg_plugged_in(chip) &&
 			(chip->flags & BOOST_FLASH_WA)) {
 		qpnp_chg_usb_suspend_enable(chip, 1);
@@ -3525,27 +3544,59 @@ qpnp_chg_regulator_boost_enable(struct regulator_dev *rdev)
 
 /* Boost regulator operations */
 #define ABOVE_VBAT_WEAK		BIT(1)
+#ifdef CONFIG_LGE_PM
+	static int
+			qpnp_chg_regulator_boost_disable(struct regulator_dev *rdev){
+																		 struct qpnp_chg_chip *chip = rdev_get_drvdata(rdev);
+		
+		wake_lock_timeout(&chip->uevent_wake_lock, HZ*5);
+		
+		chip->boost_disable = true;
+		cancel_delayed_work_sync(&chip->boost_disable_work);
+		schedule_delayed_work(&chip->boost_disable_work, msecs_to_jiffies(2000));
+		return 0;
+	}
+	
+	static void qpnp_chg_regulator_boost_disable_work(struct work_struct *work)
+			{
+				struct delayed_work *dwork = to_delayed_work(work);
+		struct qpnp_chg_chip *chip = container_of(dwork,
+												  struct qpnp_chg_chip, boost_disable_work);
+#else
+		
 static int
 qpnp_chg_regulator_boost_disable(struct regulator_dev *rdev)
 {
 	struct qpnp_chg_chip *chip = rdev_get_drvdata(rdev);
+#endif
 	int rc;
 	u8 vbat_sts;
 
+#ifdef CONFIG_LGE_PM
+			chip->boost_disable = false;
+#endif
 	rc = qpnp_chg_masked_write(chip,
 		chip->boost_base + BOOST_ENABLE_CONTROL,
 		BOOST_PWR_EN,
 		0, 1);
 	if (rc) {
 		pr_err("failed to disable boost rc=%d\n", rc);
+#ifdef CONFIG_LGE_PM
+				return;
+#else
 		return rc;
+#endif
 	}
 
 	rc = qpnp_chg_read(chip, &vbat_sts,
 			chip->chgr_base + CHGR_VBAT_STATUS, 1);
 	if (rc) {
 		pr_err("failed to read bat sts rc=%d\n", rc);
+#ifdef CONFIG_LGE_PM
+				return;
+#else
 		return rc;
+#endif
 	}
 
 	if (!(vbat_sts & ABOVE_VBAT_WEAK) && (chip->flags & BOOST_FLASH_WA)) {
@@ -3555,7 +3606,11 @@ qpnp_chg_regulator_boost_disable(struct regulator_dev *rdev)
 			0xA5, 1);
 		if (rc) {
 			pr_err("failed to write SEC_ACCESS rc=%d\n", rc);
-			return rc;
+#ifdef CONFIG_LGE_PM
+					return;
+#else
+					return rc;
+#endif
 		}
 
 		rc = qpnp_chg_masked_write(chip,
@@ -3564,7 +3619,11 @@ qpnp_chg_regulator_boost_disable(struct regulator_dev *rdev)
 			0x20, 1);
 		if (rc) {
 			pr_err("failed to write COMP_OVR1 rc=%d\n", rc);
-			return rc;
+#ifdef CONFIG_LGE_PM
+					return;
+#else
+					return rc;
+#endif
 		}
 
 		usleep(2000);
@@ -3575,7 +3634,11 @@ qpnp_chg_regulator_boost_disable(struct regulator_dev *rdev)
 			0xA5, 1);
 		if (rc) {
 			pr_err("failed to write SEC_ACCESS rc=%d\n", rc);
-			return rc;
+#ifdef CONFIG_LGE_PM
+					return;
+#else
+					return rc;
+#endif
 		}
 
 		rc = qpnp_chg_masked_write(chip,
@@ -3584,7 +3647,11 @@ qpnp_chg_regulator_boost_disable(struct regulator_dev *rdev)
 			0x00, 1);
 		if (rc) {
 			pr_err("failed to write COMP_OVR1 rc=%d\n", rc);
-			return rc;
+#ifdef CONFIG_LGE_PM
+					return;
+#else
+					return rc;
+#endif
 		}
 	}
 
@@ -3596,7 +3663,11 @@ qpnp_chg_regulator_boost_disable(struct regulator_dev *rdev)
 			0xA5, 1);
 		if (rc) {
 			pr_err("failed to write SEC_ACCESS rc=%d\n", rc);
-			return rc;
+#ifdef CONFIG_LGE_PM
+					return;
+#else
+					return rc;
+#endif
 		}
 
 		rc = qpnp_chg_masked_write(chip,
@@ -3605,7 +3676,11 @@ qpnp_chg_regulator_boost_disable(struct regulator_dev *rdev)
 			0x00, 1);
 		if (rc) {
 			pr_err("failed to write COMP_OVR1 rc=%d\n", rc);
-			return rc;
+#ifdef CONFIG_LGE_PM
+					return;
+#else
+					return rc;
+#endif
 		}
 
 		usleep(1000);
@@ -3613,7 +3688,11 @@ qpnp_chg_regulator_boost_disable(struct regulator_dev *rdev)
 		qpnp_chg_usb_suspend_enable(chip, 0);
 	}
 
-	return rc;
+#ifdef CONFIG_LGE_PM
+			return;
+#else
+			return rc;
+#endif
 }
 
 static int
@@ -3621,6 +3700,9 @@ qpnp_chg_regulator_boost_is_enabled(struct regulator_dev *rdev)
 {
 	struct qpnp_chg_chip *chip = rdev_get_drvdata(rdev);
 
+			if (chip->boost_disable)
+			return 0;
+			
 	return qpnp_chg_is_boost_en_set(chip);
 }
 
@@ -3943,7 +4025,14 @@ qpnp_eoc_work(struct work_struct *work)
 				pr_debug("psy changed batt_psy\n");
 				power_supply_changed(&chip->batt_psy);
 				qpnp_chg_enable_irq(&chip->chg_vbatdet_lo);
-				goto stop_eoc;
+#if defined(CONFIG_LGE_PM)
+						chip->vbatdet_lo_cnt = 0;
+						vbat_low_count = 0;
+						count = 0;
+						return;
+#else
+						goto stop_eoc;
+#endif
 			} else {
 				count += 1;
 				pr_info("EOC count = %d\n", count);
@@ -5607,6 +5696,12 @@ qpnp_chg_hwinit(struct qpnp_chg_chip *chip, u8 subtype,
 			chip->usb_chgpth_base + USB_OVP_CTL,
 			USB_VALID_DEB_20MS,
 			USB_VALID_DEB_20MS, 1);
+#ifdef CONFIG_MACH_MSM8974_G3_KDDI
+			/* set OVP to 10.5V  */
+			rc = qpnp_chg_masked_write(chip,
+									   chip->usb_chgpth_base + USB_OVP_CTL,
+									   0x30, 0x20, 1);
+#endif
 
 		rc = qpnp_chg_masked_write(chip,
 			chip->usb_chgpth_base + CHGR_USB_ENUM_T_STOP,
@@ -5916,6 +6011,12 @@ static void qpnp_monitor_batt_temp(struct work_struct *work)
 			(res.force_update == true && res.state == CHG_BATT_DECCUR_STATE &&
 			res.dc_current != DC_CURRENT_DEF)) {
 			qpnp_chg_ibatmax_set(chip, res.dc_current);
+				if (res.change_lvl == STS_CHE_STPCHG_TO_DECCUR) {
+					qpnp_chg_charge_pause(chip, res.disable_chg);
+					schedule_delayed_work(&chip->eoc_work,
+										  msecs_to_jiffies(EOC_CHECK_PERIOD_MS));
+					wake_unlock(&chip->lcs_wake_lock);
+				}
 		} else if (res.change_lvl == STS_CHE_NORMAL_TO_STPCHG ||
 			(res.force_update == true &&
 			res.state == CHG_BATT_STPCHG_STATE)) {
@@ -5936,6 +6037,8 @@ static void qpnp_monitor_batt_temp(struct work_struct *work)
 			qpnp_chg_ibatmax_set(chip, res.dc_current);
 #endif
 			qpnp_chg_charge_pause(chip, res.disable_chg);
+				schedule_delayed_work(&chip->eoc_work,
+									  msecs_to_jiffies(EOC_CHECK_PERIOD_MS));
 			wake_unlock(&chip->lcs_wake_lock);
 		}
 #ifdef CONFIG_LGE_THERMALE_CHG_CONTROL
@@ -6271,6 +6374,7 @@ qpnp_charger_probe(struct spmi_device *spmi)
 #ifdef CONFIG_LGE_PM
 	wake_lock_init(&chip->uevent_wake_lock, WAKE_LOCK_SUSPEND, "qpnp_chg_uevent");
 	INIT_DELAYED_WORK(&chip->usb_valid_work, qpnp_chg_usb_valid_work);
+		INIT_DELAYED_WORK(&chip->boost_disable_work, qpnp_chg_regulator_boost_disable_work);
 #endif
 
 #ifdef CONFIG_LGE_CHARGER_TEMP_SCENARIO
@@ -6419,6 +6523,7 @@ qpnp_charger_probe(struct spmi_device *spmi)
 #ifdef CONFIG_LGE_PM
 	qpnp_chg = chip;
 	chip->factory_chg_disable = false;
+		chip->boost_disable = false;
 #endif
 
 	qpnp_chg_usb_chg_gone_irq_handler(chip->chg_gone.irq, chip);
@@ -6516,6 +6621,7 @@ qpnp_charger_remove(struct spmi_device *spmi)
 	cancel_delayed_work_sync(&chip->arb_stop_work);
 	cancel_delayed_work_sync(&chip->battemp_work);
 	cancel_delayed_work_sync(&chip->usb_valid_work);
+		cancel_delayed_work_sync(&chip->boost_disable_work);
 	device_remove_file(&spmi->dev, &dev_attr_at_charge);
 	device_remove_file(&spmi->dev, &dev_attr_at_chcomp);
 	device_remove_file(&spmi->dev, &dev_attr_at_pmrst);

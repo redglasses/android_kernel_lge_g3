@@ -2112,8 +2112,44 @@ int32_t msm_sensor_platform_probe(struct platform_device *pdev, void *data)
 		return rc;
 	}
 
-/* [LGE_CHANGE_S] youngbae.choi@lge.com, 2013-05-16
- * in case of imx135 sensor, excute the eeprom read function  */
+#if defined(CONFIG_MACH_MSM8974_G3_KDDI)
+	/*                                                                                   */
+	if(!strcmp(s_ctrl->sensordata->sensor_name, "imx135")) {
+		
+		uint16_t chip_type;
+		
+		rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
+																s_ctrl->sensor_i2c_client,
+																0x3B02,
+																0x00, MSM_CAMERA_I2C_BYTE_DATA);
+		pr_info("%s: write 0x00 to 0x3B02, rc %d\n", __func__, rc);
+		
+		rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
+																s_ctrl->sensor_i2c_client,
+																0x3B00,
+																0x01, MSM_CAMERA_I2C_BYTE_DATA);
+		pr_info("%s: write 0x01 to 0x3B00, rc %d\n", __func__, rc);
+		
+		
+		rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_read(
+															   s_ctrl->sensor_i2c_client,
+															   0x3B01,
+															   &chip_type, MSM_CAMERA_I2C_BYTE_DATA);
+		pr_info("%s: check status 0x3B01, value = %d rc %d\n", __func__, chip_type, rc);
+		
+		rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_read(
+															   s_ctrl->sensor_i2c_client,
+															   0x3B2C,
+															   &chip_type, MSM_CAMERA_I2C_BYTE_DATA);
+		if(rc < 0)
+		pr_err("%s: read chip_type failed, rc %d\n", __func__, rc);
+		else
+		pr_info("%s: chip_type = %d\n", __func__, chip_type & 0x01);
+	}
+#endif
+	
+	/*                                                 
+															  */
 	if(!strcmp(s_ctrl->sensordata->sensor_name, "imx135") ||
 		(!strcmp(s_ctrl->sensordata->sensor_name, "imx214"))){
 		rc = msm_eeprom_read();
